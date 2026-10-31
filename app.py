@@ -9,30 +9,10 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# Credenciais do Strava
+# Credenciais do Strava com o novo Refresh Token definitivo já integrado!
 CLIENT_ID = 292584
 CLIENT_SECRET = "1d5172f10e55ee584968381005db4156b3c1811b"
-
-# Função para trocar o código novo pelo refresh token definitivo
-def obter_refresh_token_inicial():
-    try:
-        response = requests.post(
-            "https://www.strava.com/oauth/token",
-            data={
-                'client_id': CLIENT_ID,
-                'client_secret': CLIENT_SECRET,
-                'code': '74f8d47033795288d39abea0574f06a1c254ff6b',
-                'grant_type': 'authorization_code'
-            }
-        )
-        dados = response.json()
-        print("RESPOSTA DA TROCA DO CÓDIGO:", dados)
-        return dados.get('refresh_token')
-    except Exception as e:
-        print(f"Erro ao trocar token inicial: {e}")
-        return None
-
-REFRESH_TOKEN = "13a16ad7c8dd6aafdba6fc88a88b55d2e58d762" 
+REFRESH_TOKEN = "5884d2aiffc3d8786b8ada4334c66e7212cb12ea"
 
 # Configurações de E-mail (Lidas do Render)
 SMTP_SERVER = "smtp.gmail.com"
@@ -44,11 +24,6 @@ EMAIL_DESTINATARIO = os.environ.get("EMAIL_DESTINATARIO")
 
 def obter_access_token():
     try:
-        global REFRESH_TOKEN
-        token_gerado = obter_refresh_token_inicial()
-        if token_gerado:
-            REFRESH_TOKEN = token_gerado
-
         response = requests.post(
             "https://www.strava.com/oauth/token",
             data={
@@ -65,11 +40,25 @@ def obter_access_token():
         return None
 
 def atividade_ja_enviada(atividade_id):
-    """Verifica no Gmail se já existe um e-mail enviado com o ID desta atividade."""
+    """Verifica no Gmail se já existe um e-mail enviado com o ID desta atividade de forma segura."""
     try:
         mail = imaplib.IMAP4_SSL(IMAP_SERVER)
         mail.login(EMAIL_REMETENTE, EMAIL_SENHA)
-        mail.select('"[Gmail]/Enviados"' if "gmail.com" in EMAIL_REMETENTE.lower() else "INBOX")
+        
+        # Tenta selecionar a pasta de enviados em português ou inglês, com fallback para a caixa de entrada
+        pasta_selecionada = False
+        for pasta in ['"[Gmail]/Enviados"', '"[Gmail]/Sent Mail"', 'INBOX']:
+            try:
+                status, _ = mail.select(pasta)
+                if status == 'OK':
+                    pasta_selecionada = True
+                    break
+            except:
+                continue
+                
+        if not pasta_selecionada:
+            mail.logout()
+            return False
         
         status, messages = mail.search(None, f'(BODY "{atividade_id}")')
         if status == 'OK' and messages[0]:
@@ -137,7 +126,7 @@ def enviar_historico_email():
             continue
 
         assunto = f"[Strava] Relatório de Treino: {nome} ({tipo})"
-        corpo = f"Detalhes do Treino:\n\n- ID: {atividade_id}\n- Nome: {nome}\n- Tipo: {tipo}\n- Data: {data}\n- Distância: {distância_km} km\n- Tempo em Movimento: {tempo_min} minutos"
+        corpo = f"Detalhes do Treino:\n\n- ID: {atividade_id}\n- Nome: {nome}\n- Tipo: {tipo}\n- Data: {data}\n- Distância: {distancia_km} km\n- Tempo em Movimento: {tempo_min} minutos"
         
         if enviar_email(assunto, corpo):
             enviados += 1
