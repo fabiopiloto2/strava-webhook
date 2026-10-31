@@ -1,3 +1,4 @@
 flask
 stravalib
 requests
+gunicorn
