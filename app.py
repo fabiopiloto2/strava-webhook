@@ -9,18 +9,35 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# Credenciais do Strava com o Refresh Token definitivo já garantido
 CLIENT_ID = 292584
 CLIENT_SECRET = "1d5172f10e55ee584968381005db4156b3c1811b"
+# Coloque provisoriamente o seu último refresh token válido ou deixe o de troca abaixo
 REFRESH_TOKEN = "5884d2aiffc3d8786b8ada4334c66e7212cb12ea"
 
-# Configurações de E-mail (Lidas do Render)
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 IMAP_SERVER = "imap.gmail.com"
 EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
 EMAIL_SENHA = os.environ.get("EMAIL_SENHA")
 EMAIL_DESTINATARIO = os.environ.get("EMAIL_DESTINATARIO")
+
+@app.route('/gerar-token', methods=['GET'])
+def gerar_token():
+    # Cole o código novo obtido no navegador dentro das aspas abaixo
+    codigo_autorizacao = request.args.get('code', 'COLOQUE_O_NOVO_CODIGO_AQUI')
+    try:
+        response = requests.post(
+            "https://www.strava.com/oauth/token",
+            data={
+                'client_id': CLIENT_ID,
+                'client_secret': CLIENT_SECRET,
+                'code': codigo_autorizacao,
+                'grant_type': 'authorization_code'
+            }
+        )
+        return jsonify(response.json())
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
 
 def obter_access_token():
     try:
@@ -40,7 +57,6 @@ def obter_access_token():
         return None
 
 def atividade_ja_enviada(atividade_id):
-    """Verifica no Gmail se já existe um e-mail enviado com o ID desta atividade de forma segura."""
     try:
         mail = imaplib.IMAP4_SSL(IMAP_SERVER)
         mail.login(EMAIL_REMETENTE, EMAIL_SENHA)
@@ -91,7 +107,7 @@ def enviar_email(assunto, corpo):
 @app.route('/enviar-historico-email', methods=['GET'])
 def enviar_historico_email():
     if not EMAIL_REMETENTE or not EMAIL_SENHA or not EMAIL_DESTINATARIO:
-        return jsonify({"erro": "Variáveis de ambiente de e-mail não configuradas corretamente no Render."}), 500
+        return jsonify({"erro": "Variáveis de ambiente de e-mail não configuradas corretamente."}), 500
 
     per_page = request.args.get('per_page', default=10, type=int)
     
