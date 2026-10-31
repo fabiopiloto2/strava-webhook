@@ -2,7 +2,7 @@ import os
 from flask import Flask, request, jsonify
 from stravalib.client import Client
 
-app = Flask(_name_)
+app = Flask(__name__)
 
 # Suas credenciais do Strava
 CLIENT_ID = 292584
