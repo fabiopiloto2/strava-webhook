@@ -77,21 +77,25 @@ def ver_historico():
         return jsonify({"erro": "Não foi possível obter o token de acesso"}), 500
     
     headers = {'Authorization': f'Bearer {access_token}'}
-    response = requests.get("https://www.strava.com/api/v3/athlete/activities?per_page=10", headers=headers)
+    response = requests.get("https://www.strava.com/api/v3/athlete/activities?per_page=5", headers=headers)
     
     if response.status_code == 200:
         atividades = response.json()
-        resumo = [
-            {
-                "id": a.get("id"),
-                "nome": a.get("name"),
-                "tipo": a.get("type"),
-                "distancia_km": round(a.get("distance", 0) / 1000, 2),
-                "data": a.get("start_date_local")
-            } 
-            for a in atividades
-        ]
-        return jsonify(resumo), 200
+        if not atividades:
+            return jsonify({"mensagem": "Nenhuma atividade encontrada."}), 200
+            
+        texto_resumo = "Aqui estão os seus últimos treinos: "
+        for a in atividades:
+            nome = a.get("name")
+            tipo = a.get("type")
+            distancia_km = round(a.get("distance", 0) / 1000, 2)
+            texto_resumo += f"Atividade de {tipo}: {nome}, com {distancia_km} quilómetros. "
+            
+        return jsonify({
+            "total_atividades": len(atividades),
+            "resumo_falado": texto_resumo,
+            "dados_brutos": atividades
+        }), 200
     else:
         return jsonify({"erro": "Erro ao buscar atividades", "detalhes": response.text}), response.status_code
 
