@@ -1,5 +1,7 @@
 import os
 import smtplib
+import imaplib
+import email
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import requests
@@ -15,6 +17,7 @@ REFRESH_TOKEN = "13a16ad7c8dd6aafdba6fc88a88b55d2e58d762"
 # Configurações de E-mail (Lidas do Render)
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
+IMAP_SERVER = "imap.gmail.com"
 EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
 EMAIL_SENHA = os.environ.get("EMAIL_SENHA")
 EMAIL_DESTINATARIO = os.environ.get("EMAIL_DESTINATARIO")
@@ -34,6 +37,25 @@ def obter_access_token():
     except Exception as e:
         print(f"Erro ao obter access token: {e}")
         return None
+
+def atividade_ja_enviada(atividade_id):
+    """Verifica no Gmail se já existe um e-mail enviado com o ID desta atividade."""
+    try:
+        mail = imaplib.IMAP4_SSL(IMAP_SERVER)
+        mail.login(EMAIL_REMETENTE, EMAIL_SENHA)
+        mail.select(""[Gmail]/Enviados"" if "gmail.com" in EMAIL_REMETENTE.lower() else "INBOX")
+        
+        # Procura por e-mails que contenham o ID da atividade
+        status, messages = mail.search(None, f'(BODY "{atividade_id}")')
+        if status == 'OK' and messages[0]:
+            mail.logout()
+            return True # Já foi enviado
+        
+        mail.logout()
+        return False # Ainda não foi enviado
+    except Exception as e:
+        print(f"Erro ao verificar duplicados no e-mail: {e}")
+        return False # Se houver falha na verificação, tenta enviar para garantir
 
 def enviar_email(assunto, corpo):
     try:
@@ -76,14 +98,21 @@ def enviar_historico_email():
         return jsonify({"mensagem": "Nenhuma atividade encontrada."}), 200
 
     enviados = 0
+    ignorados = 0
+    
     for a in atividades:
-        atividade_id = a.get("id")
+        atividade_id = str(a.get("id"))
         nome = a.get("name")
         data = a.get("start_date_local", "data_desconhecida")
         tipo = a.get("type")
         distancia_km = round(a.get("distance", 0) / 1000, 2)
         tempo_min = round(a.get("moving_time", 0) / 60, 1)
         
+        # Verifica se já foi enviado anteriormente
+        if atividade_ja_enviada(atividade_id):
+            ignorados += 1
+            continue
+
         assunto = f"[Strava] Relatório de Treino: {nome} ({tipo})"
         corpo = f"""Detalhes do Treino:\n
 - ID: {atividade_id}
@@ -99,7 +128,8 @@ def enviar_historico_email():
 
     return jsonify({
         "status": "sucesso",
-        "total_enviados": enviados
+        "novos_enviados": enviados,
+        "duplicados_ignorados": ignorados
     }), 200
 
 if __name__ == '__main__':
