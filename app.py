@@ -12,20 +12,9 @@ app = Flask(__name__)
 # Credenciais do Strava
 CLIENT_ID = 292584
 CLIENT_SECRET = "1d5172f10e55ee584968381005db4156b3c1811b"
-# Colocaremos o novo token aqui assim que o gerarmos
-REFRESH_TOKEN = "13a16ad7c8dd6aafdba6fc88a88b55d2e58d762"
 
-# Configurações de E-mail (Lidas do Render)
-SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
-IMAP_SERVER = "imap.gmail.com"
-EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
-EMAIL_SENHA = os.environ.get("EMAIL_SENHA")
-EMAIL_DESTINATARIO = os.environ.get("EMAIL_DESTINATARIO")
-
-@app.route('/gerar-token', methods=['GET'])
-def gerar_token():
-    """Rota temporária para trocar o código de autorização pelo novo Refresh Token"""
+# ATENÇÃO: Vamos trocar o código de autorização pelo token definitivo automaticamente!
+def obter_refresh_token_inicial():
     try:
         response = requests.post(
             "https://www.strava.com/oauth/token",
@@ -36,13 +25,32 @@ def gerar_token():
                 'grant_type': 'authorization_code'
             }
         )
-        print("RESPOSTA DA TROCA DE TOKEN:", response.text)
-        return jsonify(response.json())
+        dados = response.json()
+        print("RESPOSTA DA TROCA DO CÓDIGO:", dados)
+        return dados.get('refresh_token')
     except Exception as e:
-        return jsonify({"erro": str(e)}), 500
+        print(f"Erro ao trocar token inicial: {e}")
+        return None
+
+# Tentamos obter o token definitivo (se já tiver o refresh token guardado depois, pode fixá-lo aqui)
+REFRESH_TOKEN = "13a16ad7c8dd6aafdba6fc88a88b55d2e58d762" 
+
+# Configurações de E-mail (Lidas do Render)
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+IMAP_SERVER = "imap.gmail.com"
+EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
+EMAIL_SENHA = os.environ.get("EMAIL_SENHA")
+EMAIL_DESTINATARIO = os.environ.get("EMAIL_DESTINATARIO")
 
 def obter_access_token():
     try:
+        # Se necessário, podemos forçar a troca do código na primeira execução
+        global REFRESH_TOKEN
+        token_gerado = obter_refresh_token_inicial()
+        if token_gerado:
+            REFRESH_TOKEN = token_gerado
+
         response = requests.post(
             "https://www.strava.com/oauth/token",
             data={
@@ -52,12 +60,14 @@ def obter_access_token():
                 'refresh_token': REFRESH_TOKEN
             }
         )
+        print("Resposta detalhada do Strava:", response.text)
         return response.json().get('access_token')
     except Exception as e:
         print(f"Erro ao obter access token: {e}")
         return None
 
 def atividade_ja_enviada(atividade_id):
+    """Verifica no Gmail se já existe um e-mail enviado com o ID desta atividade."""
     try:
         mail = imaplib.IMAP4_SSL(IMAP_SERVER)
         mail.login(EMAIL_REMETENTE, EMAIL_SENHA)
@@ -71,7 +81,7 @@ def atividade_ja_enviada(atividade_id):
         mail.logout()
         return False
     except Exception as e:
-        print(f"Erro ao verificar duplicados: {e}")
+        print(f"Erro ao verificar duplicados no e-mail: {e}")
         return False
 
 def enviar_email(assunto, corpo):
@@ -95,9 +105,10 @@ def enviar_email(assunto, corpo):
 @app.route('/enviar-historico-email', methods=['GET'])
 def enviar_historico_email():
     if not EMAIL_REMETENTE or not EMAIL_SENHA or not EMAIL_DESTINATARIO:
-        return jsonify({"erro": "Variáveis de ambiente de e-mail não configuradas."}), 500
+        return jsonify({"erro": "Variáveis de ambiente de e-mail não configuradas corretamente no Render."}), 500
 
     per_page = request.args.get('per_page', default=10, type=int)
+    
     access_token = obter_access_token()
     if not access_token:
         return jsonify({"erro": "Não foi possível obter o token do Strava"}), 500
@@ -106,7 +117,7 @@ def enviar_historico_email():
     response = requests.get(f"https://www.strava.com/api/v3/athlete/activities?per_page={per_page}", headers=headers)
     
     if response.status_code != 200:
-        return jsonify({"erro": "Erro ao buscar atividades", "detalhes": response.text}), response.status_code
+        return jsonify({"erro": "Erro ao buscar atividades no Strava", "detalhes": response.text}), response.status_code
         
     atividades = response.json()
     if not atividades:
@@ -133,7 +144,11 @@ def enviar_historico_email():
         if enviar_email(assunto, corpo):
             enviados += 1
 
-    return jsonify({"status": "sucesso", "novos_enviados": enviados, "duplicados_ignorados": ignorados}), 200
+    return jsonify({
+        "status": "sucesso",
+        "novos_enviados": enviados,
+        "duplicados_ignorados": ignorados
+    }), 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
