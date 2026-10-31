@@ -13,7 +13,7 @@ app = Flask(__name__)
 CLIENT_ID = 292584
 CLIENT_SECRET = "1d5172f10e55ee584968381005db4156b3c1811b"
 
-# ATENÇÃO: Vamos trocar o código de autorização pelo token definitivo automaticamente!
+# Função para trocar o código novo pelo refresh token definitivo
 def obter_refresh_token_inicial():
     try:
         response = requests.post(
@@ -21,7 +21,7 @@ def obter_refresh_token_inicial():
             data={
                 'client_id': CLIENT_ID,
                 'client_secret': CLIENT_SECRET,
-                'code': 'e6e853da50891b6d2e36c00c1c57070f4fe4e75d',
+                'code': '74f8d47033795288d39abea0574f06a1c254ff6b',
                 'grant_type': 'authorization_code'
             }
         )
@@ -32,7 +32,6 @@ def obter_refresh_token_inicial():
         print(f"Erro ao trocar token inicial: {e}")
         return None
 
-# Tentamos obter o token definitivo (se já tiver o refresh token guardado depois, pode fixá-lo aqui)
 REFRESH_TOKEN = "13a16ad7c8dd6aafdba6fc88a88b55d2e58d762" 
 
 # Configurações de E-mail (Lidas do Render)
@@ -45,7 +44,6 @@ EMAIL_DESTINATARIO = os.environ.get("EMAIL_DESTINATARIO")
 
 def obter_access_token():
     try:
-        # Se necessário, podemos forçar a troca do código na primeira execução
         global REFRESH_TOKEN
         token_gerado = obter_refresh_token_inicial()
         if token_gerado:
@@ -139,7 +137,7 @@ def enviar_historico_email():
             continue
 
         assunto = f"[Strava] Relatório de Treino: {nome} ({tipo})"
-        corpo = f"Detalhes do Treino:\n\n- ID: {atividade_id}\n- Nome: {nome}\n- Tipo: {tipo}\n- Data: {data}\n- Distância: {distancia_km} km\n- Tempo em Movimento: {tempo_min} minutos"
+        corpo = f"Detalhes do Treino:\n\n- ID: {atividade_id}\n- Nome: {nome}\n- Tipo: {tipo}\n- Data: {data}\n- Distância: {distância_km} km\n- Tempo em Movimento: {tempo_min} minutos"
         
         if enviar_email(assunto, corpo):
             enviados += 1
