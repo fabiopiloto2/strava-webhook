@@ -9,7 +9,7 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# Credenciais do Strava com o novo Refresh Token definitivo já integrado!
+# Credenciais do Strava com o Refresh Token definitivo já garantido
 CLIENT_ID = 292584
 CLIENT_SECRET = "1d5172f10e55ee584968381005db4156b3c1811b"
 REFRESH_TOKEN = "5884d2aiffc3d8786b8ada4334c66e7212cb12ea"
@@ -45,7 +45,6 @@ def atividade_ja_enviada(atividade_id):
         mail = imaplib.IMAP4_SSL(IMAP_SERVER)
         mail.login(EMAIL_REMETENTE, EMAIL_SENHA)
         
-        # Tenta selecionar a pasta de enviados em português ou inglês, com fallback para a caixa de entrada
         pasta_selecionada = False
         for pasta in ['"[Gmail]/Enviados"', '"[Gmail]/Sent Mail"', 'INBOX']:
             try:
