@@ -1,19 +1,35 @@
 import os
+import threading
+import requests
 from flask import Flask, request, jsonify
 from stravalib.client import Client
 
-app = Flask(__name__)
+app = Flask(_name_)
 
 # Suas credenciais do Strava
 CLIENT_ID = 292584
 CLIENT_SECRET = "1d5172f10e55ee584968381005db4156b3c1811b"
 REFRESH_TOKEN = "13a16ad7c8dd6aafdba6fc88a88b55d2e58d762"
 
+def registrar_webhook_automatico():
+    try:
+        url = "https://www.strava.com/api/v3/push_subscriptions"
+        payload = {
+            'client_id': CLIENT_ID,
+            'client_secret': CLIENT_SECRET,
+            'callback_url': "https://strava-webhook-vi7k.onrender.com/webhook",
+            'verify_token': "MEU_TOKEN_SECRETO_DE_VALIDACAO"
+        }
+        response = requests.post(url, data=payload)
+        print(f"Tentativa de registro automático no Strava. Status: {response.status_code}, Resposta: {response.text}")
+    except Exception as e:
+        print(f"Erro ao registrar webhook automaticamente: {e}")
+
+# Dispara o registro em segundo plano assim que o servidor sobe
+threading.Thread(target=registrar_webhook_automatico).start()
+
 @app.route('/webhook', methods=['GET'])
 def validar_webhook():
-    """
-    O Strava faz uma requisição GET para validar a assinatura do webhook.
-    """
     verify_token = "MEU_TOKEN_SECRETO_DE_VALIDACAO"
     mode = request.args.get('hub.mode')
     token = request.args.get('hub.verify_token')
@@ -29,9 +45,6 @@ def validar_webhook():
 
 @app.route('/webhook', methods=['POST'])
 def receber_evento():
-    """
-    O Strava envia um POST sempre que uma nova atividade é criada.
-    """
     evento = request.json
     print(f"Evento recebido do Strava: {evento}")
 
@@ -42,5 +55,5 @@ def receber_evento():
 
     return jsonify({"status": "recebido"}), 200
 
-if __name__ == '__main__':
+if _name_ == '_main_':
     app.run(host='0.0.0.0', port=5000)
