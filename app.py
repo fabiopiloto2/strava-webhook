@@ -7,7 +7,7 @@ app = Flask(_name_)
 # Suas credenciais do Strava
 CLIENT_ID = 292584
 CLIENT_SECRET = "1d5172f10e55ee584968381005db4156b3c1811b"
-REFRESH_TOKEN = 13a16ad7c8bdd6aafdba6fc88a88b55d2e58d762
+REFRESH_TOKEN = "13a16ad7c8bdd6aafdba6fc88a88b55d2e58d762"
 
 @app.route('/webhook', methods=['GET'])
 def validar_webhook():
