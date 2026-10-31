@@ -5,7 +5,7 @@ from email.mime.multipart import MIMEMultipart
 import requests
 from flask import Flask, request, jsonify
 
-app = Flask(_name_)
+app = Flask(__name__)
 
 # Credenciais do Strava
 CLIENT_ID = 292584
@@ -102,5 +102,5 @@ def enviar_historico_email():
         "total_enviados": enviados
     }), 200
 
-if _name_ == '_main_':
+if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
