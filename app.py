@@ -2,14 +2,29 @@ import os
 import threading
 import requests
 from flask import Flask, request, jsonify
-from stravalib.client import Client
 
-app = Flask(__name__)
+app = Flask(_name_)
 
 # Suas credenciais do Strava
 CLIENT_ID = 292584
 CLIENT_SECRET = "1d5172f10e55ee584968381005db4156b3c1811b"
 REFRESH_TOKEN = "13a16ad7c8dd6aafdba6fc88a88b55d2e58d762"
+
+def obter_access_token():
+    try:
+        response = requests.post(
+            "https://www.strava.com/oauth/token",
+            data={
+                'client_id': CLIENT_ID,
+                'client_secret': CLIENT_SECRET,
+                'grant_type': 'refresh_token',
+                'refresh_token': REFRESH_TOKEN
+            }
+        )
+        return response.json().get('access_token')
+    except Exception as e:
+        print(f"Erro ao obter access token: {e}")
+        return None
 
 def registrar_webhook_automatico():
     try:
@@ -55,5 +70,30 @@ def receber_evento():
 
     return jsonify({"status": "recebido"}), 200
 
-if __name__ == '__main__':
+@app.route('/historico', methods=['GET'])
+def ver_historico():
+    access_token = obter_access_token()
+    if not access_token:
+        return jsonify({"erro": "Não foi possível obter o token de acesso"}), 500
+    
+    headers = {'Authorization': f'Bearer {access_token}'}
+    response = requests.get("https://www.strava.com/api/v3/athlete/activities?per_page=10", headers=headers)
+    
+    if response.status_code == 200:
+        atividades = response.json()
+        resumo = [
+            {
+                "id": a.get("id"),
+                "nome": a.get("name"),
+                "tipo": a.get("type"),
+                "distancia_km": round(a.get("distance", 0) / 1000, 2),
+                "data": a.get("start_date_local")
+            } 
+            for a in atividades
+        ]
+        return jsonify(resumo), 200
+    else:
+        return jsonify({"erro": "Erro ao buscar atividades", "detalhes": response.text}), response.status_code
+
+if _name_ == '_main_':
     app.run(host='0.0.0.0', port=5000)
