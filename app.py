@@ -3,7 +3,7 @@ import threading
 import requests
 from flask import Flask, request, jsonify
 
-app = Flask(_name_)
+app = Flask(__name__)
 
 # Suas credenciais do Strava
 CLIENT_ID = 292584
