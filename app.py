@@ -43,7 +43,7 @@ def atividade_ja_enviada(atividade_id):
     try:
         mail = imaplib.IMAP4_SSL(IMAP_SERVER)
         mail.login(EMAIL_REMETENTE, EMAIL_SENHA)
-        mail.select(""[Gmail]/Enviados"" if "gmail.com" in EMAIL_REMETENTE.lower() else "INBOX")
+        mail.select('"[Gmail]/Enviados"' if "gmail.com" in EMAIL_REMETENTE.lower() else "INBOX")
         
         # Procura por e-mails que contenham o ID da atividade
         status, messages = mail.search(None, f'(BODY "{atividade_id}")')
