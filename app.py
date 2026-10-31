@@ -33,7 +33,6 @@ def obter_access_token():
                 'refresh_token': REFRESH_TOKEN
             }
         )
-        # Imprime a resposta exata do Strava nos logs do Render para diagnóstico
         print("Resposta detalhada do Strava:", response.text)
         return response.json().get('access_token')
     except Exception as e:
@@ -76,10 +75,6 @@ def enviar_email(assunto, corpo):
     except Exception as e:
         print(f"Erro ao enviar e-mail: {e}")
         return False
-
-@app.route('/enviar-historico-email', methods=['GET'])
-def enviar_historico-email():
-    pass # placeholder handled below correctly
 
 @app.route('/enviar-historico-email', methods=['GET'])
 def enviar_historico_email():
