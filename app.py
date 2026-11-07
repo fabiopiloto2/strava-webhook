@@ -1,7 +1,6 @@
 import os
 import smtplib
 import imaplib
-import email
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import requests
@@ -11,9 +10,8 @@ app = Flask(__name__)
 
 CLIENT_ID = 292584
 CLIENT_SECRET = "1d5172f10e55ee584968381005db4156b3c1811b"
-# Coloque provisoriamente o seu último refresh token válido ou deixe o de troca abaixo
-REFRESH_TOKEN = "5884d2aiffc3d8786b8ada4334c66e7212cb12ea"
 
+# Configurações de E-mail (Lidas do Render)
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 IMAP_SERVER = "imap.gmail.com"
@@ -21,42 +19,27 @@ EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE")
 EMAIL_SENHA = os.environ.get("EMAIL_SENHA")
 EMAIL_DESTINATARIO = os.environ.get("EMAIL_DESTINATARIO")
 
-@app.route('/gerar-token', methods=['GET'])
-def gerar_token():
-    # Cole o código novo obtido no navegador dentro das aspas abaixo
-    codigo_autorizacao = request.args.get('code', 'COLOQUE_O_NOVO_CODIGO_AQUI')
+def obter_access_token_via_codigo():
+    """Troca o código de autorização fresco diretamente pelo token de acesso e refresh token do Strava."""
     try:
         response = requests.post(
             "https://www.strava.com/oauth/token",
             data={
                 'client_id': CLIENT_ID,
                 'client_secret': CLIENT_SECRET,
-                'code': codigo_autorizacao,
+                'code': 'd9ea4689125c25390ab01610e30db467f7c57153',
                 'grant_type': 'authorization_code'
             }
         )
-        return jsonify(response.json())
+        dados = response.json()
+        print("RESPOSTA DA TROCA DO CÓDIGO:", dados)
+        return dados.get('access_token')
     except Exception as e:
-        return jsonify({"erro": str(e)}), 500
-
-def obter_access_token():
-    try:
-        response = requests.post(
-            "https://www.strava.com/oauth/token",
-            data={
-                'client_id': CLIENT_ID,
-                'client_secret': CLIENT_SECRET,
-                'grant_type': 'refresh_token',
-                'refresh_token': REFRESH_TOKEN
-            }
-        )
-        print("Resposta detalhada do Strava:", response.text)
-        return response.json().get('access_token')
-    except Exception as e:
-        print(f"Erro ao obter access token: {e}")
+        print(f"Erro ao obter token via código: {e}")
         return None
 
 def atividade_ja_enviada(atividade_id):
+    """Verifica no Gmail se já existe um e-mail enviado com o ID desta atividade."""
     try:
         mail = imaplib.IMAP4_SSL(IMAP_SERVER)
         mail.login(EMAIL_REMETENTE, EMAIL_SENHA)
@@ -107,13 +90,13 @@ def enviar_email(assunto, corpo):
 @app.route('/enviar-historico-email', methods=['GET'])
 def enviar_historico_email():
     if not EMAIL_REMETENTE or not EMAIL_SENHA or not EMAIL_DESTINATARIO:
-        return jsonify({"erro": "Variáveis de ambiente de e-mail não configuradas corretamente."}), 500
+        return jsonify({"erro": "Variáveis de ambiente de e-mail não configuradas corretamente no Render."}), 500
 
     per_page = request.args.get('per_page', default=10, type=int)
     
-    access_token = obter_access_token()
+    access_token = obter_access_token_via_codigo()
     if not access_token:
-        return jsonify({"erro": "Não foi possível obter o token do Strava"}), 500
+        return jsonify({"erro": "Não foi possível obter o token do Strava através do código"}), 500
     
     headers = {'Authorization': f'Bearer {access_token}'}
     response = requests.get(f"https://www.strava.com/api/v3/athlete/activities?per_page={per_page}", headers=headers)
