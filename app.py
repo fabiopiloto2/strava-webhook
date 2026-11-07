@@ -86,9 +86,13 @@ def enviar_email(assunto, corpo):
     except Exception as e:
         print(f"Erro ao enviar e-mail: {e}")
         return False
+@app.route('/')
+def home():
+    return "Servidor do Strava ativo! Aceda a /enviar-historico-email para enviar os treinos."
 
 @app.route('/enviar-historico-email', methods=['GET'])
 def enviar_historico_email():
+
     if not EMAIL_REMETENTE or not EMAIL_SENHA or not EMAIL_DESTINATARIO:
         return jsonify({"erro": "Variáveis de ambiente de e-mail não configuradas corretamente no Render."}), 500
 
